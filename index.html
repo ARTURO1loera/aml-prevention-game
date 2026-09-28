@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ciudad Transparente</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-alt: #1f2937;
+      --line: #334155;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --blue: #60a5fa;
+      --green: #34d399;
+      --amber: #fbbf24;
+      --red: #f87171;
+      --purple: #a78bfa;
+      --yellow: #facc15;
+      --shadow: rgba(0, 0, 0, 0.4);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(180deg, #020817, #0f172a 30%, #111827 100%);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 18px;
+    }
+
+    .game-shell {
+      width: min(980px, 100%);
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px 18px;
+      box-shadow: 0 16px 40px var(--shadow);
+      margin-bottom: 12px;
+    }
+
+    .title-block h1 {
+      margin: 0;
+      font-size: clamp(1.3rem, 2vw, 2rem);
+      color: var(--yellow);
+      letter-spacing: 0.03em;
+    }
+
+    .title-block p {
+      margin: 4px 0 0;
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 10px;
+      font-size: 0.82rem;
+      font-weight: bold;
+    }
+
+    .stat-box {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 8px;
+      padding: 8px 12px;
+      min-width: 130px;
+      text-align: center;
+    }
+
+    .stat-box.cash { color: #6ee7b7; }
+    .stat-box.declared { color: #93c5fd; }
+    .stat-box.risk { color: #fca5a5; }
+    .stat-box.score { color: #fcd34d; }
+
+    .canvas-wrap {
+      position: relative;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      box-shadow: 0 16px 40px var(--shadow);
+    }
+
+    canvas {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 10px;
+      background: #1e293b;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .hud-row {
+      margin-top: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: var(--muted);
+      font-size: 0.76rem;
+    }
+
+    .hud-row strong { color: var(--text); }
+
+    #objectiveText {
+      font-weight: bold;
+      color: #dbeafe;
+    }
+
+    .modal {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(2, 6, 23, 0.76);
+      backdrop-filter: blur(2px);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .modal.show { display: flex; }
+
+    .modal-card {
+      width: min(540px, 100%);
+      background: rgba(15, 23, 42, 0.98);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 14px;
+      padding: 20px 22px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+    }
+
+    .modal-card h2 {
+      margin: 0 0 10px;
+      font-size: 1.2rem;
+      color: var(--yellow);
+    }
+
+    .modal-card p,
+    .modal-card li,
+    .modal-card label {
+      color: var(--text);
+      line-height: 1.5;
+      font-size: 0.82rem;
+    }
+
+    .modal-card ul {
+      margin: 10px 0;
+      padding-left: 18px;
+    }
+
+    .button-row {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+
+    .primary {
+      background: #2563eb;
+      color: white;
+    }
+
+    .success {
+      background: #16a34a;
+      color: white;
+    }
+
+    .danger {
+      background: #dc2626;
+      color: white;
+    }
+
+    .secondary {
+      background: #334155;
+      color: white;
+    }
+
+    .transaction-box {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-top: 10px;
+    }
+
+    .choice-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(130px, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .choice-grid button {
+      width: 100%;
+      background: #1f2937;
+      color: var(--text);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .choice-grid button.correct { background: #166534; }
+    .choice-grid button.wrong { background: #7f1d1d; }
+
+    @media (max-width: 760px) {
+      .topbar, .hud-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .stats {
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="game-shell">
+    <header class="topbar">
+      <div class="title-block">
+        <h1>Ciudad Transparente</h1>
+        <p>Prevención del lavado de dinero y detección de riesgo financiero</p>
+      </div>
+      <div class="stats">
+        <div class="stat-box cash">Efectivo: <span id="cashValue">0</span></div>
+        <div class="stat-box declared">Declarado: <span id="declaredValue">0</span></div>
+        <div class="stat-box risk">Riesgo: <span id="riskValue">Bajo</span></div>
+        <div class="stat-box score">Puntuación: <span id="scoreValue">0</span></div>
+      </div>
+    </header>
+
+    <div class="canvas-wrap">
+      <canvas id="gameCanvas" width="800" height="500"></canvas>
+      <div id="gameModal" class="modal">
+        <div class="modal-card" id="modalContent"></div>
+      </div>
+    </div>
+
+    <div class="hud-row">
+      <div><strong>Nivel:</strong> <span id="levelLabel">1</span></div>
+      <div id="objectiveText">Objetivo: aprender la diferencia entre ingresos legítimos y efectivo no verificado.</div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const modal = document.getElementById('gameModal');
+    const modalContent = document.getElementById('modalContent');
+
+    const state = {
+      level: 1,
+      score: 0,
+      cash: 0,
+      declaredIncome: 0,
+      riskLevel: 'Bajo',
+      alertCount: 0,
+      purchases: 0,
+      auditCount: 0,
+      currentObjective: '',
+      activeAlert: false,
+      police: { x: 700, y: 80, size: 22, speed: 2.2, active: false },
+      player: { x: 400, y: 250, size: 18, speed: 2.8 },
+      keys: {},
+      lastInteraction: 0,
+      finalSummary: {
+        alerts: [],
+        errors: [],
+        concepts: [],
+        score: 0
+      },
+      investigation: {
+        questionIndex: 0,
+        questions: [
+          {
+            text: 'Una persona recibe un pago por una panadería y lo declara al banco. ¿Es una operación normal o sospechosa?',
+            correct: 'normal',
+            explanation: 'Los ingresos legítimos, cuando se documentan y coinciden con la actividad, no suelen generar alertas.'
+          },
+          {
+            text: 'Se compran varios bienes de alto valor sin que exista un respaldo claro de ingresos declarados. ¿Qué señal aparece?',
+            correct: 'sospechosa',
+            explanation: 'La desproporción entre ingresos declarados y gastos reales es una señal de riesgo patrimonial.'
+          },
+          {
+            text: 'Una operación con grandes cantidades de efectivo sin una explicación documental. ¿Qué tipo de riesgo presenta?',
+            correct: 'sospechosa',
+            explanation: 'La falta de justificación y la concentración de efectivo no respaldado generan alertas de prevención.'
+          }
+        ]
+      }
+    };
+
+    const worldLocations = [
+      { name: 'Casa', x: 42, y: 48, w: 110, h: 70, color: '#3b82f6', action: 'home' },
+      { name: 'Panadería', x: 185, y: 48, w: 120, h: 70, color: '#10b981', action: 'bakery' },
+      { name: 'Banco', x: 480, y: 48, w: 110, h: 70, color: '#f59e0b', action: 'bank' },
+      { name: 'Tienda', x: 649, y: 48, w: 110, h: 70, color: '#ec4899', action: 'shop' },
+      { name: 'Callejón', x: 42, y: 365, w: 130, h: 80, color: '#8b5cf6', action: 'alley' },
+      { name: 'UIF', x: 650, y: 368, w: 110, h: 80, color: '#ef4444', action: 'uif' }
+    ];
+
+    const levelMeta = {
+      1: {
+        title: 'Nivel 1 - El dinero',
+        objective: 'Recoge ingresos legítimos en la panadería y observa la diferencia con el efectivo no verificado del callejón.',
+        complete: false
+      },
+      2: {
+        title: 'Nivel 2 - Las señales',
+        objective: 'Compra bienes y observa cómo la incoherencia patrimonial activa una alerta y una persecución.',
+        complete: false
+      },
+      3: {
+        title: 'Nivel 3 - La investigación',
+        objective: 'Clasifica las transacciones sospechosas e identifica la debida diligencia adecuada.',
+        complete: false
+      }
+    };
+
+    function setObjective(text) {
+      state.currentObjective = text;
+      document.getElementById('objectiveText').textContent = 'Objetivo: ' + text;
+    }
+
+    function updateHud() {
+      document.getElementById('cashValue').textContent = formatMoney(state.cash);
+      document.getElementById('declaredValue').textContent = formatMoney(state.declaredIncome);
+      document.getElementById('riskValue').textContent = state.riskLevel;
+      document.getElementById('scoreValue').textContent = String(state.score);
+      document.getElementById('levelLabel').textContent = String(state.level);
+    }
+
+    function formatMoney(value) {
+      return '$' + Math.round(value).toLocaleString('es-MX');
+    }
+
+    function calculateRisk() {
+      const undeclared = Math.max(0, state.cash - state.declaredIncome);
+      if (undeclared >= 600000) {
+        state.riskLevel = 'Alto';
+      } else if (undeclared >= 200000) {
+        state.riskLevel = 'Medio';
+      } else {
+        state.riskLevel = 'Bajo';
+      }
+    }
+
+    function addScore(value) {
+      state.score += value;
+      updateHud();
+    }
+
+    function addAlert(message) {
+      state.finalSummary.alerts.push(message);
+    }
+
+    function addError(message) {
+      state.finalSummary.errors.push(message);
+    }
+
+    function addConcept(message) {
+      if (!state.finalSummary.concepts.includes(message)) state.finalSummary.concepts.push(message);
+    }
+
+    function showModal(html) {
+      modalContent.innerHTML = html;
+      modal.classList.add('show');
+    }
+
+    function hideModal() {
+      modal.classList.remove('show');
+    }
+
+    function startLevel(levelNumber) {
+      state.level = levelNumber;
+      setObjective(levelMeta[levelNumber].objective);
+      updateHud();
+
+      if (levelNumber === 1) {
+        showModal(`
+          <h2>Nivel 1: El dinero</h2>
+          <p>En la ciudad hay dos caminos: ingresos legales y dinero no verificado. El objetivo no es ocultar nada, sino reconocer la diferencia entre una operación transparente y una operación que genera riesgo.</p>
+          <ul>
+            <li>La panadería genera ingresos declarados.</li>
+            <li>El callejón puede generar efectivo sin respaldo.</li>
+            <li>El riesgo crece cuando el efectivo supera los ingresos declarados.</li>
+          </ul>
+          <div class="button-row"><button class="primary" onclick="hideModal()">Continuar</button></div>
+        `);
+      }
+
+      if (levelNumber === 2) {
+        showModal(`
+          <h2>Nivel 2: Las señales</h2>
+          <p>Cuando se compran bienes de alto valor sin una explicación clara, el sistema identifica una incoherencia patrimonial. La ciudad responde con una alerta y una persecución.</p>
+          <ul>
+            <li>Los autos, joyas y casas son bienes de alto valor.</li>
+            <li>La compra debe estar respaldada por ingresos declarados.</li>
+            <li>La alerta se activa cuando el gasto supera la capacidad de explicación.</li>
+          </ul>
+          <div class="button-row"><button class="primary" onclick="hideModal()">Continuar</button></div>
+        `);
+      }
+
+      if (levelNumber === 3) {
+        showModal(`
+          <h2>Nivel 3: La investigación</h2>
+          <p>Ahora debes revisar transacciones y decidir si son normales o sospechosas. La respuesta correcta está en la proporción, la justificación y la coherencia financiera.</p>
+          <div class="button-row"><button class="primary" onclick="showInvestigationQuestion()">Iniciar investigación</button></div>
+        `);
+      }
+    }
+
+    function handlePlayerAction(loc) {
+      const now = performance.now();
+      if (now - state.lastInteraction < 350) return;
+      state.lastInteraction = now;
+
+      if (loc.action === 'bakery') {
+        const gain = 70000;
+        state.cash += gain;
+        state.declaredIncome += gain;
+        addScore(25);
+        addConcept('Los ingresos legítimos y declarados reducen el riesgo financiero.');
+        showMessage('Trabajas en la panadería y registras ingresos legítimos.');
+      }
+
+      if (loc.action === 'alley') {
+        const gain = 150000;
+        if (state.cash >= 2000000) {
+          showMessage('El efectivo acumulado ya supera el límite de la ciudad. Debes declarar o redistribuir la información financiera.');
+          return;
+        }
+
+        state.cash = Math.min(2000000, state.cash + gain);
+        addScore(10);
+        addAlert('Se detectó transferencia de efectivo sin respaldo claro.');
+        showMessage('En el callejón aparece efectivo no verificado. El riesgo financiero aumenta.');
+      }
+
+      if (loc.action === 'bank') {
+        if (state.cash > 0) {
+          state.declaredIncome += state.cash;
+          state.cash = 0;
+          addScore(35);
+          addConcept('La declaración de ingresos ayuda a explicar la procedencia del dinero.');
+          showMessage('El banco registra todos los ingresos del momento, reduciendo la incoherencia.');
+        } else {
+          showMessage('No hay efectivo para declarar.');
+        }
+      }
+
+      if (loc.action === 'shop') {
+        openShop();
+      }
+
+      if (loc.action === 'home') {
+        showMessage('La casa es un punto de descanso. Revisa la actividad financiera antes de gastar.');
+      }
+
+      if (loc.action === 'uif') {
+        if (state.alertCount > 0 || state.auditCount > 0) {
+          showMessage('La UIF revisa los movimientos financieros y documenta las señales de alerta.');
+        } else {
+          showMessage('La unidad de inteligencia financiera observa patrones de comportamiento y revisa indicadores de riesgo.');
+        }
+      }
+
+      calculateRisk();
+      updateHud();
+      checkLevelProgress();
+    }
+
+    function openShop() {
+      const html = `
+        <h2>Tienda de bienes de lujo</h2>
+        <p>Compra solo cuando exista una justificación clara. Los bienes de alto valor deben coincidir con la capacidad de gasto real.</p>
+        <div class="button-row" style="flex-direction:column;align-items:stretch;">
+          <button class="secondary" onclick="buyItem('car', 500000)">Auto deportivo - $500.000</button>
+          <button class="secondary" onclick="buyItem('jewel', 300000)">Joya de lujo - $300.000</button>
+          <button class="secondary" onclick="buyItem('house', 1200000)">Casa residencial - $1.200.000</button>
+          <button class="danger" onclick="hideModal()">Cerrar</button>
+        </div>
+      `;
+      showModal(html);
+    }
+
+    function buyItem(item, price) {
+      if (state.cash < price) {
+        showMessage('Los fondos actuales no alcanzan para esta compra.');
+        return;
+      }
+
+      state.cash -= price;
+      state.purchases += 1;
+      const suspicious = price > state.declaredIncome + 200000;
+
+      if (suspicious) {
+        state.alertCount += 1;
+        state.police.active = true;
+        addScore(-30);
+        addError('Se compró un bien de alto valor sin explicar el respaldo patrimonial.');
+        addConcept('La incoherencia patrimonial activa alertas por desproporción entre ingresos y gastos.');
+        showModal(`
+          <h2>Alerta de riesgo financiero</h2>
+          <p>La compra supera la capacidad de explicación basada en los ingresos declarados. El sistema presenta una señal de alerta por incoherencia patrimonial.</p>
+          <ul>
+            <li>Se detecta gasto desproporcionado.</li>
+            <li>La diferencia entre gasto real y capacidad de explicación aumenta el riesgo.</li>
+            <li>La patrulla inicia la persecución.</li>
+          </ul>
+          <div class="button-row"><button class="primary" onclick="hideModal()">Continuar</button></div>
+        `);
+      } else {
+        addScore(20);
+        showMessage('La compra coincide con un perfil financiero coherente.');
+      }
+
+      calculateRisk();
+      updateHud();
+      checkLevelProgress();
+    }
+
+    function showMessage(msg) {
+      console.log(msg);
+    }
+
+    function checkLevelProgress() {
+      if (state.level === 1 && state.declaredIncome >= 150000 && state.cash >= 50000) {
+        levelMeta[1].complete = true;
+        addScore(50);
+        startLevel(2);
+      }
+
+      if (state.level === 2 && state.alertCount >= 1 && state.police.active) {
+        levelMeta[2].complete = true;
+        addScore(80);
+        setTimeout(() => startLevel(3), 400);
+      }
+    }
+
+    function showInvestigationQuestion() {
+      hideModal();
+      const q = state.investigation.questions[state.investigation.questionIndex];
+      if (!q) {
+        showFinalScreen();
+        return;
+      }
+
+      showModal(`
+        <h2>Investigación financiera</h2>
+        <div class="transaction-box">
+          <p>${q.text}</p>
+        </div>
+        <div class="choice-grid">
+          <button class="secondary" onclick="answerInvestigation('normal')">Transacción normal</button>
+          <button class="secondary" onclick="answerInvestigation('sospechosa')">Transacción sospechosa</button>
+        </div>
+      `);
+    }
+
+    function answerInvestigation(choice) {
+      const q = state.investigation.questions[state.investigation.questionIndex];
+      if (choice === q.correct) {
+        addScore(60);
+        addConcept(q.explanation);
+        showModal(`
+          <h2>Respuesta correcta</h2>
+          <p>${q.explanation}</p>
+          <div class="button-row"><button class="success" onclick="nextInvestigation()">Siguiente</button></div>
+        `);
+      } else {
+        addScore(-20);
+        addError('Se clasificó incorrectamente una operación de riesgo.');
+        showModal(`
+          <h2>Respuesta incorrecta</h2>
+          <p>${q.explanation}</p>
+          <div class="button-row"><button class="danger" onclick="nextInvestigation()">Continuar</button></div>
+        `);
+      }
+    }
+
+    function nextInvestigation() {
+      state.investigation.questionIndex += 1;
+      showInvestigationQuestion();
+    }
+
+    function triggerAudit() {
+      state.auditCount += 1;
+      addScore(30);
+      addConcept('La persecución confirma que la incoherencia patrimonial activa una respuesta institucional.');
+      showModal(`
+        <h2>Auditoría financiera</h2>
+        <p>La patrulla atrapa al jugador y se activa una auditoría. La evidencia muestra que el gasto supera la capacidad explicativa de los ingresos declarados. Esto se interpreta como una señal de riesgo y posible operación sospechosa.</p>
+        <ul>
+          <li>El consumo de bienes de alto valor requiere respaldo documental.</li>
+          <li>La desproporción patrimonial es una señal clave.</li>
+          <li>La debida diligencia y la transparencia son esenciales.</li>
+        </ul>
+        <div class="button-row"><button class="primary" onclick="completeSecondLevel()">Aceptar resultado</button></div>
+      `);
+    }
+
+    function completeSecondLevel() {
+      state.police.active = false;
+      state.alertCount = Math.max(state.alertCount, 1);
+      hideModal();
+      levelMeta[2].complete = true;
+      addScore(40);
+      startLevel(3);
+    }
+
+    function showFinalScreen() {
+      const alertsText = state.finalSummary.alerts.length > 0 ? state.finalSummary.alerts.join('<br>') : 'No se registraron señales de alerta relevantes.';
+      const errorsText = state.finalSummary.errors.length > 0 ? state.finalSummary.errors.join('<br>') : 'No hubo errores de clasificación graves.';
+      const conceptsText = state.finalSummary.concepts.length > 0 ? state.finalSummary.concepts.join('<br>') : 'Se reforzó la importancia de la transparencia.';
+
+      state.finalSummary.score = state.score;
+
+      showModal(`
+        <h2>FIN DE LA INVESTIGACIÓN</h2>
+        <p><strong>Puntuación final:</strong> ${state.score}</p>
+        <p><strong>Señales de alerta identificadas:</strong><br>${alertsText}</p>
+        <p><strong>Errores cometidos:</strong><br>${errorsText}</p>
+        <p><strong>Conceptos aprendidos:</strong><br>${conceptsText}</p>
+        <p>La debida diligencia exige contrastar la fuente de fondos, revisar la coherencia patrimonial y documentar las operaciones. La prevención del lavado de dinero depende de reconocer patrones de riesgo antes de que se conviertan en riesgo real.</p>
+        <div class="button-row"><button class="success" onclick="resetGame()">Jugar otra vez</button></div>
+      `);
+    }
+
+    function resetGame() {
+      state.level = 1;
+      state.score = 0;
+      state.cash = 0;
+      state.declaredIncome = 0;
+      state.riskLevel = 'Bajo';
+      state.alertCount = 0;
+      state.purchases = 0;
+      state.auditCount = 0;
+      state.activeAlert = false;
+      state.player.x = 400;
+      state.player.y = 250;
+      state.police.x = 700;
+      state.police.y = 80;
+      state.police.active = false;
+      state.investigation.questionIndex = 0;
+      state.finalSummary.alerts = [];
+      state.finalSummary.errors = [];
+      state.finalSummary.concepts = [];
+      levelMeta[1].complete = false;
+      levelMeta[2].complete = false;
+      levelMeta[3].complete = false;
+      updateHud();
+      startLevel(1);
+    }
+
+    function updatePlayer() {
+      if (state.keys['ArrowUp'] || state.keys['w']) state.player.y -= state.player.speed;
+      if (state.keys['ArrowDown'] || state.keys['s']) state.player.y += state.player.speed;
+      if (state.keys['ArrowLeft'] || state.keys['a']) state.player.x -= state.player.speed;
+      if (state.keys['ArrowRight'] || state.keys['d']) state.player.x += state.player.speed;
+
+      state.player.x = Math.max(12, Math.min(canvas.width - 24, state.player.x));
+      state.player.y = Math.max(12, Math.min(canvas.height - 24, state.player.y));
+
+      if (state.police.active) {
+        const dx = state.player.x - state.police.x;
+        const dy = state.player.y - state.police.y;
+        const distance = Math.hypot(dx, dy);
+
+        if (distance > 0) {
+          state.police.x += (dx / distance) * state.police.speed;
+          state.police.y += (dy / distance) * state.police.speed;
+        }
+
+        if (distance < state.player.size + state.police.size / 2) {
+          state.police.active = false;
+          triggerAudit();
+        }
+      }
+
+      for (const loc of worldLocations) {
+        const hit = state.player.x > loc.x - 15 && state.player.x < loc.x + loc.w + 10 &&
+          state.player.y > loc.y - 15 && state.player.y < loc.y + loc.h + 10;
+
+        if (hit) {
+          handlePlayerAction(loc);
+          break;
+        }
+      }
+    }
+
+    function drawWorld() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
+
+      ctx.beginPath();
+      ctx.moveTo(200, 20); ctx.lineTo(200, 480);
+      ctx.moveTo(600, 20); ctx.lineTo(600, 480);
+      ctx.moveTo(20, 250); ctx.lineTo(780, 250);
+      ctx.stroke();
+
+      for (const loc of worldLocations) {
+        ctx.fillStyle = loc.color;
+        ctx.fillRect(loc.x, loc.y, loc.w, loc.h);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(loc.name, loc.x + loc.w / 2, loc.y + loc.h / 2 + 4);
+      }
+
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath();
+      ctx.arc(state.player.x, state.player.y, state.player.size / 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (state.police.active) {
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(state.police.x, state.police.y, state.police.size / 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 10px Arial';
+        ctx.fillText('PATRULLA', state.police.x, state.police.y - 12);
+      }
+    }
+
+    function gameLoop() {
+      updatePlayer();
+      calculateRisk();
+      updateHud();
+      drawWorld();
+      requestAnimationFrame(gameLoop);
+    }
+
+    window.addEventListener('keydown', (e) => {
+      const key = e.key.toLowerCase();
+      state.keys[e.key] = true;
+      state.keys[key] = true;
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
+    });
+
+    window.addEventListener('keyup', (e) => {
+      const key = e.key.toLowerCase();
+      state.keys[e.key] = false;
+      state.keys[key] = false;
+    });
+
+    resetGame();
+    gameLoop();
+  </script>
+</body>
+</html>
+
